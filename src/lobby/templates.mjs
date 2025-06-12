@@ -9,17 +9,19 @@ import assert from "node:assert";
  */
 
 /**
- * 
- * @param {LobbyListItem[]} lobbies 
+ *
+ * @param {LobbyListItem[]} lobbies
  */
 function lobbyListTemplate(lobbies) {
-    assert(Array.isArray(lobbies), true, 'invalid lobbies param')
-    if (!lobbies.length) {
-        return `<p>No active lobbies</p>`
-    }
-    return `
+  assert(Array.isArray(lobbies), true, "invalid lobbies param");
+  if (!lobbies.length) {
+    return `<p>No active lobbies</p>`;
+  }
+  return `
 <ul>
-    ${lobbies.map((lobby) => `<div class="lobby-item">
+    ${lobbies
+      .map(
+        (lobby) => `<div class="lobby-item">
         <div>
             <strong>${lobby.name}</strong><br />
             Players: ${lobby.playerCount} / ${lobby.lobbySize}
@@ -29,36 +31,43 @@ function lobbyListTemplate(lobbies) {
             <button type="submit">Join</button>
         </form>
     </div>`
-    ).join("")}
+      )
+      .join("")}
 </ul >
-`
+`;
 }
 
 /**
- * 
- * @param {string[]} userNames 
- * @param {number} maxUsers 
+ *
+ * @param {string[]} userNames
+ * @param {number} maxUsers
  * @returns {string}
  */
 function lobbyPlayersTemplate(userNames, maxUsers) {
-    const list = [...new Array(maxUsers)]
-    for (let i = 0; i < userNames.length; i++) {
-        const userName = userNames[i];
-        list[i] = userName
-    }
+  const list = [...new Array(maxUsers)];
+  for (let i = 0; i < userNames.length; i++) {
+    const userName = userNames[i];
+    list[i] = userName;
+  }
 
-    return `
+  return `
         
             <h2>Players in this lobby:</h2>
             <ul class="player-list">
-                ${list.map((userName) => userName ? `<li>${userName}</li>` : "<li>Waiting for player...</li>")}
+                ${list.map((userName) =>
+                  userName
+                    ? `<li>${userName}</li>`
+                    : "<li>Waiting for player...</li>"
+                )}
             </ul>
 
             <p class="lobby-status">
-                Waiting for players: <strong>${userNames.length} / ${maxUsers}</strong>
+                Waiting for players: <strong>${
+                  userNames.length
+                } / ${maxUsers}</strong>
             </p>
         
-`
+`;
 }
 
 /**
@@ -74,7 +83,7 @@ function lobbyPlayersTemplate(userNames, maxUsers) {
  * @returns {string}
  */
 function lobbyWaitingTemplate(lobby) {
-    return `
+  return `
         <h1 class="project-name">Project ${lobby.projectName}</h1>
 
         <section class="lobby-info">
@@ -84,7 +93,7 @@ function lobbyWaitingTemplate(lobby) {
         <div class="story-count">
             Estimating <strong>${lobby.storiesCount} stories</strong>
         </div>
-    `
+    `;
 }
 
 /**
@@ -92,7 +101,7 @@ function lobbyWaitingTemplate(lobby) {
  * @returns {string}
  */
 function lobbyStoryTemplate(story) {
-    return `
+  return `
     <h1 class="project-name">Project ${story.projectName}</h1>
     <section class="story-card">
         <div class="story-fields">
@@ -116,7 +125,7 @@ function lobbyStoryTemplate(story) {
             </div>
         </form>
     </section>
-    `
+    `;
 }
 
 /**
@@ -124,50 +133,51 @@ function lobbyStoryTemplate(story) {
  * @returns {string}
  */
 function lobbyStorySummary(story) {
-    return `
+  return `
     <h1 class="project-name">Project ${story.projectName}</h1>
     <section class="story-card">
         <div class="story-fields">
             <h2 class="story-title">${story.title}</h2>
-            ${story.votes.map((vote) => `<p><strong>${vote.userName}</strong>: ${vote.vote}</p>`)}            
+            ${story.votes.map(
+              (vote) => `<p><strong>${vote.userName}</strong>: ${vote.vote}</p>`
+            )}            
         </div>
     </section>
-    `
+    `;
 }
 
 /**
  * @returns {string}
  */
 function lobbyFullTemplate() {
-    return `
+  return `
         <section class=story-card">
             <h3>Lobby is full :(</h3>
             <a href="/">Back to lobbies</a>
         </section>
-    `
+    `;
 }
 
 /**
  * @returns {string}
  */
 function lobbyNotExistTemplate() {
-    return `
+  return `
         <section class=story-card">
             <h3>Lobby doesn't exist :(</h3>
             <a href="/">Back to lobbies</a>
         </section>
-    `
+    `;
 }
 
-
 /**
- * 
+ *
  * @param {string} mainContent
- * @returns 
+ * @returns
  */
 function lobbytemplate(mainContent) {
-    //Project WaffleMachine 2.0
-    return `
+  //Project WaffleMachine 2.0
+  return `
         <!DOCTYPE html>
         <html lang="en">
 
@@ -384,11 +394,6 @@ function lobbytemplate(mainContent) {
                         })
                     }
 
-                    function finishStory(){
-                        fetch("/lobby/story/finish", {
-                            method:"POST"   
-                        })
-                    }
 
                     const sse = new EventSource("/lobby-events")
 
@@ -405,23 +410,22 @@ function lobbytemplate(mainContent) {
                     sse.addEventListener("story:vote:finish", (event) => {
                         console.log("[SSE] story:vote:finish", event.data)                        
                         loadStorySummary()
+                    })
 
-                        setTimout(() => {
-                            finishStory()
-                        }, 5000)
+                    sse.addEventListener("story:finish", (event) => {
+                        console.log("[SSE] story:vote:finish", event.data)                        
+                        loadStory()
                     })
                     
                     sse.addEventListener("story:vote:update", (event) => {
                         console.log("[SSE] story:vote:update", event.data)
-                        // Exception for this simlpe data, sori sori
-                        document.querySelector("#playerVoteCount").innerHTML = event.data
-                    })
+                        loadStory()
+                    })                
 
                     sse.onerror = () => {
                         console.warn("SSE connection lost. Attempting to reconnect...");
                     }
 
-                    console.log(sse)
                 });
             </script>
         </head>
@@ -433,17 +437,16 @@ function lobbytemplate(mainContent) {
         </body>
 
         </html>
-    `
+    `;
 }
-
 
 export {
-    lobbyListTemplate,
-    lobbyPlayersTemplate,
-    lobbytemplate,
-    lobbyStoryTemplate,
-    lobbyWaitingTemplate,
-    lobbyFullTemplate,
-    lobbyNotExistTemplate,
-    lobbyStorySummary
-}
+  lobbyListTemplate,
+  lobbyPlayersTemplate,
+  lobbytemplate,
+  lobbyStoryTemplate,
+  lobbyWaitingTemplate,
+  lobbyFullTemplate,
+  lobbyNotExistTemplate,
+  lobbyStorySummary,
+};

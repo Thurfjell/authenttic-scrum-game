@@ -24,5 +24,6 @@ export const EVENTS = {
     LOBBY_UPDATE: "lobby:update",
     STORY_UPDATE: "story:update",
     VOTE_UPDATE: "story:vote:update",
+    VOTE_FINISH: "story:vote:finish",
     STORY_FINISH: "story:finish"
 };

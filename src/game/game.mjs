@@ -1,6 +1,10 @@
 import { EVENTS } from "../postOffice/postOffice.mjs";
 import { ERROR_LOBBY_FULL } from "./error.mjs";
-import { generateDeadSeriousProjectName, generateDeadSeriousStoryTitle, generateDeadSeriousUserStory } from "./utils.mjs";
+import {
+  generateDeadSeriousProjectName,
+  generateDeadSeriousStoryTitle,
+  generateDeadSeriousUserStory,
+} from "./utils.mjs";
 
 /**
  * @typedef {Object} LobbyUser
@@ -8,7 +12,6 @@ import { generateDeadSeriousProjectName, generateDeadSeriousStoryTitle, generate
  * @property {string} userName
  * @property {string} lobbyId
  */
-
 
 /**
  * @typedef {Object} Vote
@@ -43,7 +46,7 @@ import { generateDeadSeriousProjectName, generateDeadSeriousStoryTitle, generate
 
 /**
  * Interface for the Game API.
- * 
+ *
  * @typedef {Object} GameLogic
  * @property {(filters?: { notFull?: boolean }) => LobbyState[]} getLobbies
  * @property {(lobbyId: string) => LobbyState | null} getLobbyByLobbyId
@@ -57,154 +60,163 @@ import { generateDeadSeriousProjectName, generateDeadSeriousStoryTitle, generate
  * @property {(lobbyId: string) => Pick<LobbyUser, "userName" | "userId">[]} getLobbyUsers
  */
 
-
 /**
- * 
- * @param {import("../postOffice/postOffice.mjs").PostOffice} postOffice 
+ *
+ * @param {import("../postOffice/postOffice.mjs").PostOffice} postOffice
  * @returns {GameLogic}
  */
 function GameLogic(postOffice) {
-    /** @type {Map<string, LobbyState>} */
-    const lobbies = new Map();
+  /** @type {Map<string, LobbyState>} */
+  const lobbies = new Map();
 
-    /** @type {Map<string, LobbyUser>} */
-    const userToLobby = new Map(); // userId => LobbyUser
+  /** @type {Map<string, LobbyUser>} */
+  const userToLobby = new Map(); // userId => LobbyUser
 
-    return {
-        getLobbies({ notFull = false } = {}) {
-            return [...lobbies.values()]
-                .filter((lobby) => {
-                    if (notFull && lobby.playingUsersCount >= lobby.lobbySize) { return false }
-                    return true
-                })
-                .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
-        },
-        getLobbyByLobbyId(lobbyId) {
-            return lobbies.get(lobbyId) || null
-        },
-        getLobbyByUserId(userId) {
-            const user = userToLobby.get(userId)
-            let lobby = null
-            if (user && user.lobbyId) {
-                lobby = lobbies.get(user.lobbyId) || null
-            }
+  return {
+    getLobbies({ notFull = false } = {}) {
+      return [...lobbies.values()]
+        .filter((lobby) => {
+          if (notFull && lobby.playingUsersCount >= lobby.lobbySize) {
+            return false;
+          }
+          return true;
+        })
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    },
+    getLobbyByLobbyId(lobbyId) {
+      return lobbies.get(lobbyId) || null;
+    },
+    getLobbyByUserId(userId) {
+      const user = userToLobby.get(userId);
+      let lobby = null;
+      if (user && user.lobbyId) {
+        lobby = lobbies.get(user.lobbyId) || null;
+      }
 
-            return lobby
-        },
-        joinLobby(lobbyId, userId, userName) {
-            if (userToLobby.has(userId)) {
-                // either reject or join new lobby and leave old?
-                this.leaveLobby(userId)
-            }
+      return lobby;
+    },
+    joinLobby(lobbyId, userId, userName) {
+      if (userToLobby.has(userId)) {
+        // either reject or join new lobby and leave old?
+        this.leaveLobby(userId);
+      }
 
-            const lobby = lobbies.get(lobbyId)
-            if (lobby.playingUsersCount >= lobby.lobbySize) {
-                return { error: ERROR_LOBBY_FULL }
-            }
+      const lobby = lobbies.get(lobbyId);
+      if (lobby.playingUsersCount >= lobby.lobbySize) {
+        return { error: ERROR_LOBBY_FULL };
+      }
 
-            lobby.playingUsersCount += 1
-            userToLobby.set(userId, { lobbyId, userId, userName })
-            postOffice.Send({ type: "dashboard:update", lobbyId })
-            postOffice.Send({ type: "lobby:update", lobbyId })
+      lobby.playingUsersCount += 1;
+      userToLobby.set(userId, { lobbyId, userId, userName });
+      postOffice.Send({ type: "dashboard:update", lobbyId });
+      postOffice.Send({ type: "lobby:update", lobbyId });
 
-            return lobbies.get(lobbyId)
-        },
-        startLobby(lobbyId) {
-            const lobby = lobbies.get(lobbyId)
-            if (lobby.playingUsersCount < lobby.lobbySize) {
-                return
-            }
+      return lobbies.get(lobbyId);
+    },
+    startLobby(lobbyId) {
+      const lobby = lobbies.get(lobbyId);
+      if (lobby.playingUsersCount < lobby.lobbySize) {
+        return;
+      }
 
-            lobby.stories.at(0).startedAt = Date.now()
-            postOffice.Send({ type: "story:update", lobbyId })
-        },
-        createLobby(userId, userName) {
-            const lobbyId = crypto.randomUUID()
+      lobby.stories.at(0).startedAt = Date.now();
+      postOffice.Send({ type: "story:update", lobbyId });
+    },
+    createLobby(userId, userName) {
+      const lobbyId = crypto.randomUUID();
 
-            /** @type {Story[]} */
-            const stories = [...new Array(5)].map(() => {
-                const { as, reason, want } = generateDeadSeriousUserStory()
-                const id = crypto.randomUUID()
-                return {
-                    id,
-                    as,
-                    reason,
-                    want,
-                    votes: [],
-                    revealedAt: 0,
-                    title: generateDeadSeriousStoryTitle()
-                }
-            })
-            lobbies.set(lobbyId, {
-                lobbyId,
-                createdAt: Date.now(),
-                startedAt: 0,
-                lobbySize: 3,
-                playingUsersCount: 1,
-                stories,
-                lobbyName: generateDeadSeriousProjectName()
-            })
-            userToLobby.set(userId, { lobbyId, userId, userName })
-            postOffice.Send({
-                lobbyId,
-                type: "dashboard:update"
-            })
-            return lobbies.get(lobbyId)
-        },
-        leaveLobby(userId) {
-            const lobbyId = userToLobby.get(userId)
-            if (!lobbyId) {
-                return
-            }
+      /** @type {Story[]} */
+      const stories = [...new Array(5)].map(() => {
+        const { as, reason, want } = generateDeadSeriousUserStory();
+        const id = crypto.randomUUID();
+        return {
+          id,
+          as,
+          reason,
+          want,
+          votes: [],
+          revealedAt: 0,
+          title: generateDeadSeriousStoryTitle(),
+        };
+      });
+      lobbies.set(lobbyId, {
+        lobbyId,
+        createdAt: Date.now(),
+        startedAt: 0,
+        lobbySize: 3,
+        playingUsersCount: 1,
+        stories,
+        lobbyName: generateDeadSeriousProjectName(),
+      });
+      userToLobby.set(userId, { lobbyId, userId, userName });
+      postOffice.Send({
+        lobbyId,
+        type: "dashboard:update",
+      });
+      return lobbies.get(lobbyId);
+    },
+    leaveLobby(userId) {
+      const lobbyId = userToLobby.get(userId);
+      if (!lobbyId) {
+        return;
+      }
 
-            const lobby = lobbies.get(lobbyId)
-            if (!lobby) {
-                return
-            }
+      const lobby = lobbies.get(lobbyId);
+      if (!lobby) {
+        return;
+      }
 
-            lobby.playingUsersCount = (lobby.playingUsersCount - 1) || 0
-            userToLobby.delete(userId)
-            if (!lobby.playingUsersCount) {
-                // Should do something..
-                lobbies.delete(lobbyId)
-            } else {
-                postOffice.Send({
-                    lobbyId, type: "lobby:update"
-                })
-            }
+      lobby.playingUsersCount = lobby.playingUsersCount - 1 || 0;
+      userToLobby.delete(userId);
+      if (!lobby.playingUsersCount) {
+        // Should do something..
+        lobbies.delete(lobbyId);
+      } else {
+        postOffice.Send({
+          lobbyId,
+          type: "lobby:update",
+        });
+      }
 
-            postOffice.Send({
-                lobbyId, type: "dashboard:update"
-            })
+      postOffice.Send({
+        lobbyId,
+        type: "dashboard:update",
+      });
+    },
+    getLobbyUsers(lobbyId) {
+      return [...userToLobby.values()]
+        .filter((user) => user.lobbyId === lobbyId)
+        .map(({ userId, userName }) => ({ userId, userName }));
+    },
+    voteStory(lobbyId, storyId, vote) {
+      const lobby = lobbies.get(lobbyId);
+      const story = lobby.stories.find((story) => story.id === storyId);
+      const currentVote = story.votes.find((v) => v.userId === vote.userId);
 
+      if (currentVote) {
+        currentVote.vote = vote;
+      } else {
+        story.votes.push(vote);
+      }
 
-        },
-        getLobbyUsers(lobbyId) {
-            return [...userToLobby.values()]
-                .filter((user) => user.lobbyId === lobbyId)
-                .map(({ userId, userName }) => ({ userId, userName }))
-        },
-        voteStory(lobbyId, storyId, vote) {
-            const lobby = lobbies.get(lobbyId)
-            console.log(lobby)
-            const story = lobby.stories.find((story) => story.id === storyId)
-            const currentVote = story.votes.find((v) => v.userId === vote.userId)
-
-            if (currentVote) {
-                currentVote.vote = vote
-            } else {
-                story.votes.push(vote)
-            }
-
-            postOffice.Send({ lobbyId, payload: story.votes.length, type: EVENTS.VOTE_UPDATE })
-        },
-        finishStory(lobbyId, storyId) {
-            const lobby = lobbies.get(lobbyId)
-            const story = lobby.stories.find((story) => story.id === storyId)
-            story.revealedAt = Date.now()
-            postOffice.Send({ lobbyId, type: EVENTS.STORY_FINISH })
-        }
-    }
+      postOffice.Send({
+        lobbyId,
+        payload: story.votes.length,
+        type:
+          story.votes.length === lobby.playingUsersCount
+            ? EVENTS.VOTE_FINISH
+            : EVENTS.VOTE_UPDATE,
+      });
+      setTimeout(() => {
+        const l = lobbies.get(lobbyId);
+        const s = l.stories.find((s) => s.id === storyId);
+        s.revealedAt = Date.now();
+        const nextStory = l.stories.find(story => !story.startedAt)
+        nextStory.startedAt = Date.now()
+        postOffice.Send({ type: EVENTS.STORY_FINISH, lobbyId });
+      }, 8000);
+    },
+  };
 }
 
-export { GameLogic }
+export { GameLogic };
