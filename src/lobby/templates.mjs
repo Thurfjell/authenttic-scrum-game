@@ -123,7 +123,7 @@ function lobbyStoryTemplate(story) {
  * @param {{projectName:string, title:string, votes:{userName:string, vote:string}[]}} story
  * @returns {string}
  */
-function lobbyStoryFinished(story) {
+function lobbyStorySummary(story) {
     return `
     <h1 class="project-name">Project ${story.projectName}</h1>
     <section class="story-card">
@@ -376,7 +376,12 @@ function lobbytemplate(mainContent) {
                     }
 
                     function loadStorySummary(){
-
+                        const main = document.querySelector(".lobby")
+                        fetch("/lobby/story/summary")
+                        .then((res) => res.text())
+                        .then((html) => {
+                            main.innerHTML = html;    
+                        })
                     }
 
                     function finishStory(){
@@ -402,7 +407,7 @@ function lobbytemplate(mainContent) {
                         loadStorySummary()
 
                         setTimout(() => {
-                            loadStory()
+                            finishStory()
                         }, 5000)
                     })
                     
@@ -440,5 +445,5 @@ export {
     lobbyWaitingTemplate,
     lobbyFullTemplate,
     lobbyNotExistTemplate,
-    lobbyStoryFinished
+    lobbyStorySummary
 }

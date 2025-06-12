@@ -1,6 +1,6 @@
 import http from "http"
 import { parseCookies } from "../shared/utils.mjs"
-import { lobbyFullTemplate, lobbyListTemplate, lobbyNotExistTemplate, lobbyPlayersTemplate, lobbyStoryTemplate, lobbytemplate, lobbyWaitingTemplate } from "./templates.mjs";
+import { lobbyFullTemplate, lobbyListTemplate, lobbyNotExistTemplate, lobbyPlayersTemplate, lobbyStorySummary, lobbyStoryTemplate, lobbytemplate, lobbyWaitingTemplate } from "./templates.mjs";
 
 /**
  * 
@@ -143,6 +143,35 @@ function LobbyRoutes(postOffice, gameLogic) {
         const users = gameLogic.getLobbyUsers(lobby.lobbyId)
 
         res.write(lobbyPlayersTemplate(users.map((user) => user.userName), lobby.lobbySize))
+        res.end()
+    }
+
+    /**
+     * Get Story Summary
+     * @param {http.IncomingMessage} req 
+     * @param {http.ServerResponse} res 
+     */
+    function getStorySummary(req, res) {
+        const { userId } = parseCookies(req.headers.cookie)
+        if (!userId) {
+            res.statusCode = 303
+            res.setHeader("Location", "/auth")
+            res.end()
+            return
+        }
+
+        const lobby = gameLogic.getLobbyByUserId(userId)
+
+
+        if (!lobby) {
+            res.statusCode = 400
+            res.write("No lobby bro")
+            res.end()
+            return
+        }
+
+        const story = lobby.stories.find((story) => story.startedAt)
+        res.write(lobbyStorySummary({ projectName: lobby.lobbyName, title: story.title, votes: story.votes }))
         res.end()
     }
 
@@ -298,6 +327,7 @@ function LobbyRoutes(postOffice, gameLogic) {
         { handler: joinLobby, method: "POST", path: "/lobby/join" },
         { handler: createVote, method: "POST", path: "/lobby/vote" },
         { handler: getStory, method: "GET", path: "/lobby/story" },
+        { handler: getStorySummary, method: "GET", path: "/lobby/story/summary" },
         { handler: finishStory, method: "POST", path: "/lobby/story/finish" }
     ]
 
