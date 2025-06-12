@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Scrum Poker – Lobby Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet" />
+    <style>
+        body {
+            font-family: "Comic Sans MS", "Chalkboard SE", sans-serif;
+            background-color: #f7f6f3;
+            color: #333;
+            padding: 2rem;
+            margin: 0;
+        }
+
+        .dashboard {
+            max-width: 600px;
+            margin: auto;
+            background-color: #fff;
+            border: 2px dashed #bbb;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 3px 3px 5px rgba(180, 160, 130, 0.15);
+        }
+
+        h1 {
+            font-family: 'Patrick Hand', cursive;
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: #6a5f44;
+        }
+
+        .lobby-list {
+            margin-bottom: 2rem;
+        }
+
+        .lobby-item {
+            background: #fcf9f3;
+            border: 1.5px dashed #c4b68a;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 2px 2px 4px rgba(196, 182, 138, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .lobby-item .info {
+            font-family: 'Patrick Hand', cursive;
+            font-size: 1.1rem;
+            color: #5a503e;
+        }
+
+        .lobby-item button {
+            font-family: inherit;
+            font-size: 1rem;
+            padding: 0.5em 1em;
+            background-color: #e6e2d7;
+            border: 2px solid #a89c7a;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .lobby-item button:hover {
+            background-color: #dcd6c0;
+        }
+
+        .create-lobby {
+            text-align: center;
+        }
+
+        .create-lobby button {
+            font-family: inherit;
+            font-size: 1.1rem;
+            padding: 0.6em 1.2em;
+            background-color: #fffbe8;
+            border: 2px dashed #c4b68a;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 2px 2px 4px rgba(180, 160, 130, 0.2);
+        }
+
+        .create-lobby button:hover {
+            background-color: #fdfae3;
+        }
+
+        @media (max-width: 500px) {
+            .lobby-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .lobby-item button {
+                margin-top: 0.5em;
+                width: 100%;
+            }
+
+            .create-lobby button {
+                width: 100%;
+            }
+        }
+
+        .lobby-item form button {
+            background: #f2eddc;
+            border: 2px solid #a89c7a;
+            border-radius: 6px;
+            color: #333;
+            font-weight: bold;
+            padding: 0.4em 1em;
+            font-family: inherit;
+            cursor: pointer;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const listContainer = document.querySelector(".lobby-list");
+
+            function loadLobbies() {
+                fetch("/lobbies").then(res => res.json()).then(data => {
+                    listContainer.innerHTML = "";
+                    if (!data.length) {
+                        listContainer.innerHTML = "<p>No active lobbies. Create one!</p>";
+                        return;
+                    }
+                    data.forEach(lobby => {
+                        const div = document.createElement("div");
+                        div.className = "lobby-item";
+                        div.innerHTML = `
+              <div class="info">
+                <strong>${lobby.name}</strong><br>
+                Players: ${lobby.players.length} / ${lobby.maxPlayers}
+              </div>
+              ${lobby.players.length < lobby.maxPlayers ? `<button onclick="joinLobby('${lobby.id}')">Join</button>` : `<button disabled>Full</button>`}
+            `;
+                        listContainer.appendChild(div);
+                    });
+                });
+            }
+
+            window.joinLobby = function (id) {
+                window.location.href = `/lobby/${id}`;
+            };
+
+            document.getElementById("createLobbyBtn").addEventListener("click", () => {
+                fetch("/lobbies", { method: "POST" })
+                    .then(res => res.json())
+                    .then(lobby => {
+                        window.location.href = `/lobby/${lobby.id}`;
+                    });
+            });
+
+            loadLobbies();
+        });
+    </script>
+</head>
+
+<body>
+    <main class="dashboard">
+        <h1>🏰 Scrum Poker Lobby Dashboard</h1>
+
+        <section class="lobby-list">
+            <p>Loading lobbies...</p>
+            <!-- Example fragment returned from /lobby/list -->
+            <div class="lobby-item">
+                <div>
+                    <strong>Project WaffleMachine 2.0</strong><br>
+                    Players: 2 / 3
+                </div>
+                <a href="/lobby">Join</a>
+            </div>
+
+            <div class="lobby-item">
+                <div>
+                    <strong>The Agile Tornado</strong><br>
+                    Players: 3 / 3
+                </div>
+                <a style="pointer-events: none; opacity: 0.5;">Full</a>
+            </div>
+
+        </section>
+
+        <section class="create-lobby">
+            <form method="post" action="/lobbies">
+                <button>✨ Create New Lobby</button>
+            </form>
+        </section>
+    </main>
+</body>
+
+</html>
