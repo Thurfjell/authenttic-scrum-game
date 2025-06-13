@@ -98,7 +98,6 @@ function LobbyRoutes(postOffice, gameLogic) {
     }
 
     let lobby = gameLogic.getLobbyByUserId(userId);
-
     if (!lobby) {
       res.write(lobbytemplate(lobbyNotExistTemplate()));
       res.end();
@@ -106,16 +105,20 @@ function LobbyRoutes(postOffice, gameLogic) {
     }
 
     const users = gameLogic.getLobbyUsers(lobby.lobbyId);
-    let story = lobby.stories.find((story) => !story.revealedAt);
+
+    let story = lobby.stories.find(
+      (story) => !story.revealedAt && story.startedAt
+    );
+
     if (!story) {
-      gameLogic.startLobby(lobby.lobbyId);
+      story = gameLogic.startStory(lobby.lobbyId);
     }
 
-    lobby = gameLogic.getLobbyByUserId(userId);
-    story = lobby.stories.find((story) => !story.revealedAt);
-
     let mainContent = "";
-    if (story.votes.length === lobby.playingUsersCount) {
+
+    if (!story) {
+      mainContent = '<h1>Finish</h1><p>TODO</p><a href="/">Back</a>'
+    } else if (story.votes.length === lobby.playingUsersCount) {
       mainContent = lobbyStorySummary({
         projectName: lobby,
         title: story.title,
@@ -273,7 +276,7 @@ function LobbyRoutes(postOffice, gameLogic) {
         }
 
         if (lobby.playingUsersCount === lobby.lobbySize) {
-          gameLogic.startLobby(lobbyId);
+          gameLogic.startStory(lobbyId);
         }
 
         res.appendHeader("Location", "/lobby");

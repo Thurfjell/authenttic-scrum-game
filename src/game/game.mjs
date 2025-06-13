@@ -54,7 +54,7 @@ import {
  * @property {(lobbyId: string, userId: string, userName:string) => LobbyState | {error:string}} joinLobby
  * @property {(userId: string, userName:string) => LobbyState} createLobby
  * @property {(userId: string) => void} leaveLobby
- * @property {(lobbyId: string) => void} startLobby
+ * @property {(lobbyId: string) => Story | null} startStory
  * @property {(lobbyId: string, storyId:string, vote: Vote) => void} voteStory
  * @property {(lobbyId: string, storyId:string) => void} finishStory
  * @property {(lobbyId: string) => Pick<LobbyUser, "userName" | "userId">[]} getLobbyUsers
@@ -113,14 +113,16 @@ function GameLogic(postOffice) {
 
       return lobbies.get(lobbyId);
     },
-    startLobby(lobbyId) {
+    startStory(lobbyId) {
       const lobby = lobbies.get(lobbyId);
-      if (lobby.playingUsersCount < lobby.lobbySize) {
-        return;
+      console.log(lobbyId, lobby);
+      const story = lobby.stories.find((story) => !story.startedAt);
+      if (!story) {
+        return null;
       }
-
-      lobby.stories.at(0).startedAt = Date.now();
+      story.startedAt = Date.now();
       postOffice.Send({ type: "story:update", lobbyId });
+      return story;
     },
     createLobby(userId, userName) {
       const lobbyId = crypto.randomUUID();
@@ -191,6 +193,10 @@ function GameLogic(postOffice) {
     voteStory(lobbyId, storyId, vote) {
       const lobby = lobbies.get(lobbyId);
       const story = lobby.stories.find((story) => story.id === storyId);
+      if (story.votes.length === lobby.playingUsersCount) {
+        return;
+      }
+
       const currentVote = story.votes.find((v) => v.userId === vote.userId);
 
       if (currentVote) {
@@ -199,6 +205,8 @@ function GameLogic(postOffice) {
         story.votes.push(vote);
       }
 
+      console.log(">> VOTE <<");
+      console.log(story);
       postOffice.Send({
         lobbyId,
         payload: story.votes.length,
@@ -207,14 +215,16 @@ function GameLogic(postOffice) {
             ? EVENTS.VOTE_FINISH
             : EVENTS.VOTE_UPDATE,
       });
-      setTimeout(() => {
-        const l = lobbies.get(lobbyId);
-        const s = l.stories.find((s) => s.id === storyId);
-        s.revealedAt = Date.now();
-        const nextStory = l.stories.find(story => !story.startedAt)
-        nextStory.startedAt = Date.now()
-        postOffice.Send({ type: EVENTS.STORY_FINISH, lobbyId });
-      }, 8000);
+
+      if (story.votes.length === lobby.playingUsersCount) {
+        setTimeout(() => {
+          const l = lobbies.get(lobbyId);
+          const s = l.stories.find((s) => s.id === storyId);
+          s.revealedAt = Date.now();
+          this.startStory(lobbyId);
+          postOffice.Send({ type: EVENTS.STORY_FINISH, lobbyId });
+        }, 8000);
+      }
     },
   };
 }
