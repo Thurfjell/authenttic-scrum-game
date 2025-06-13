@@ -13,15 +13,15 @@ import assert from "node:assert";
  * @param {LobbyListItem[]} lobbies
  */
 function lobbyListTemplate(lobbies) {
-  assert(Array.isArray(lobbies), true, "invalid lobbies param");
-  if (!lobbies.length) {
-    return `<p>No active lobbies</p>`;
-  }
-  return `
+    assert(Array.isArray(lobbies), true, "invalid lobbies param");
+    if (!lobbies.length) {
+        return `<p>No active lobbies</p>`;
+    }
+    return `
 <ul>
     ${lobbies
-      .map(
-        (lobby) => `<div class="lobby-item">
+            .map(
+                (lobby) => `<div class="lobby-item">
         <div>
             <strong>${lobby.name}</strong><br />
             Players: ${lobby.playerCount} / ${lobby.lobbySize}
@@ -31,8 +31,8 @@ function lobbyListTemplate(lobbies) {
             <button type="submit">Join</button>
         </form>
     </div>`
-      )
-      .join("")}
+            )
+            .join("")}
 </ul >
 `;
 }
@@ -44,27 +44,26 @@ function lobbyListTemplate(lobbies) {
  * @returns {string}
  */
 function lobbyPlayersTemplate(userNames, maxUsers) {
-  const list = [...new Array(maxUsers)];
-  for (let i = 0; i < userNames.length; i++) {
-    const userName = userNames[i];
-    list[i] = userName;
-  }
+    const list = [...new Array(maxUsers)];
+    for (let i = 0; i < userNames.length; i++) {
+        const userName = userNames[i];
+        list[i] = userName;
+    }
 
-  return `
+    return `
         
             <h2>Players in this lobby:</h2>
             <ul class="player-list">
                 ${list.map((userName) =>
-                  userName
-                    ? `<li>${userName}</li>`
-                    : "<li>Waiting for player...</li>"
-                )}
+        userName
+            ? `<li>${userName}</li>`
+            : "<li>Waiting for player...</li>"
+    )}
             </ul>
 
             <p class="lobby-status">
-                Waiting for players: <strong>${
-                  userNames.length
-                } / ${maxUsers}</strong>
+                Waiting for players: <strong>${userNames.length
+        } / ${maxUsers}</strong>
             </p>
         
 `;
@@ -83,7 +82,7 @@ function lobbyPlayersTemplate(userNames, maxUsers) {
  * @returns {string}
  */
 function lobbyWaitingTemplate(lobby) {
-  return `
+    return `
         <h1 class="project-name">Project ${lobby.projectName}</h1>
 
         <section class="lobby-info">
@@ -101,7 +100,8 @@ function lobbyWaitingTemplate(lobby) {
  * @returns {string}
  */
 function lobbyStoryTemplate(story) {
-  return `
+
+    return `
     <h1 class="project-name">Project ${story.projectName}</h1>
     <section class="story-card">
         <div class="story-fields">
@@ -133,14 +133,14 @@ function lobbyStoryTemplate(story) {
  * @returns {string}
  */
 function lobbyStorySummary(story) {
-  return `
+    return `
     <h1 class="project-name">Project ${story.projectName}</h1>
     <section class="story-card">
         <div class="story-fields">
             <h2 class="story-title">${story.title}</h2>
             ${story.votes.map(
-              (vote) => `<p><strong>${vote.userName}</strong>: ${vote.vote}</p>`
-            )}            
+        (vote) => `<p><strong>${vote.userName}</strong>: ${vote.vote}</p>`
+    ).join("")}            
         </div>
     </section>
     `;
@@ -150,7 +150,7 @@ function lobbyStorySummary(story) {
  * @returns {string}
  */
 function lobbyFullTemplate() {
-  return `
+    return `
         <section class=story-card">
             <h3>Lobby is full :(</h3>
             <a href="/">Back to lobbies</a>
@@ -162,7 +162,7 @@ function lobbyFullTemplate() {
  * @returns {string}
  */
 function lobbyNotExistTemplate() {
-  return `
+    return `
         <section class=story-card">
             <h3>Lobby doesn't exist :(</h3>
             <a href="/">Back to lobbies</a>
@@ -171,13 +171,27 @@ function lobbyNotExistTemplate() {
 }
 
 /**
+ * @returns {string}
+ */
+function lobbyStoryFinishTemplate() {
+    return `
+        <section class="story-card">
+            <h1>Good job you're done<h1>
+            <form method="post" action="/lobby/story/finish">
+                <button type="submit">Now go back to work</button>
+            </form>
+        </section>
+    `
+}
+
+/**
  *
  * @param {string} mainContent
  * @returns
  */
 function lobbytemplate(mainContent) {
-  //Project WaffleMachine 2.0
-  return `
+    //Project WaffleMachine 2.0
+    return `
         <!DOCTYPE html>
         <html lang="en">
 
@@ -186,7 +200,94 @@ function lobbytemplate(mainContent) {
             <title>Scrum Poker – Lobby</title>
             <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet" />
             <style>
-                body {
+                ${lobbyStyle}
+            </style>
+            <script>
+                document.addEventListener("DOMContentLoaded", () => {
+                    function loadPlayers() {
+                        const list = document.querySelector(".lobby-info");
+                        fetch("/lobby/players")
+                        .then(async (res) => {
+                            const html = await res.text()                            
+                            list.innerHTML = html;
+                        });
+                    }
+
+                    function loadStory(){
+                        const main = document.querySelector(".lobby")
+                        fetch("/lobby/story")
+                        .then((res) => res.text())
+                        .then((html) => {
+                            main.innerHTML = html;    
+                        })
+                    }
+
+                    function loadStorySummary(){
+                        const main = document.querySelector(".lobby")
+                        fetch("/lobby/story/summary")
+                        .then((res) => res.text())
+                        .then((html) => {
+                            main.innerHTML = html;    
+                        })
+                    }
+                    
+                    function loadStoryFinish(){
+                        const main = document.querySelector(".lobby")
+                        fetch("/lobby/story/finish")
+                        .then((res) => res.text())
+                        .then((html) => {
+                            main.innerHTML = html;    
+                        })
+                    }
+
+
+                    const sse = new EventSource("/lobby-events")
+
+                    sse.addEventListener("lobby:update", (event) => {
+                        console.log("[SSE] lobby:update", event.data)
+                        loadPlayers()
+                    })
+
+                    sse.addEventListener("story:update", (event) => {
+                        console.log("[SSE] story:update", event.data)
+                        loadStory()
+                    })
+                    
+                    sse.addEventListener("story:vote:finish", (event) => { 
+                        console.log("[SSE] story:vote:finish", event.data)                      
+                        loadStorySummary()
+                    })
+
+                    sse.addEventListener("story:finish", (event) => {
+                        console.log("[SSE] story:finish", event.data)                        
+                        loadStoryFinish()
+                    })
+                    
+                    sse.addEventListener("story:vote:update", (event) => {
+                        console.log("[SSE] story:vote:update", event.data)
+                        loadStory()
+                    })                
+
+                    sse.onerror = () => {
+                        console.warn("SSE connection lost. Attempting to reconnect...");
+                    }
+
+                });
+            </script>
+        </head>
+
+        <body>
+            <main class="lobby">
+                ${mainContent}
+            </main>
+        </body>
+
+        </html>
+    `;
+}
+
+const lobbyStyle = `
+    body {
                     font-family: "Comic Sans MS", "Chalkboard SE", sans-serif;
                     background-color: #f7f6f3;
                     color: #333;
@@ -364,89 +465,17 @@ function lobbytemplate(mainContent) {
                     background-color: #f1e8d0;
                     transform: scale(1.05);
                 }
-            </style>
-            <script>
-                document.addEventListener("DOMContentLoaded", () => {
-                    function loadPlayers() {
-                        const list = document.querySelector(".lobby-info");
-                        fetch("/lobby/players")
-                        .then(async (res) => {
-                            const html = await res.text()                            
-                            list.innerHTML = html;
-                        });
-                    }
+    `
 
-                    function loadStory(){
-                        const main = document.querySelector(".lobby")
-                        fetch("/lobby/story")
-                        .then((res) => res.text())
-                        .then((html) => {
-                            main.innerHTML = html;    
-                        })
-                    }
-
-                    function loadStorySummary(){
-                        const main = document.querySelector(".lobby")
-                        fetch("/lobby/story/summary")
-                        .then((res) => res.text())
-                        .then((html) => {
-                            main.innerHTML = html;    
-                        })
-                    }
-
-
-                    const sse = new EventSource("/lobby-events")
-
-                    sse.addEventListener("lobby:update", (event) => {
-                        console.log("[SSE] lobby:update", event.data)
-                        loadPlayers()
-                    })
-
-                    sse.addEventListener("story:update", (event) => {
-                        console.log("[SSE] story:update", event.data)
-                        loadStory()
-                    })
-                    
-                    sse.addEventListener("story:vote:finish", (event) => {
-                        console.log("[SSE] story:vote:finish", event.data)                        
-                        loadStorySummary()
-                    })
-
-                    sse.addEventListener("story:finish", (event) => {
-                        console.log("[SSE] story:vote:finish", event.data)                        
-                        loadStory()
-                    })
-                    
-                    sse.addEventListener("story:vote:update", (event) => {
-                        console.log("[SSE] story:vote:update", event.data)
-                        loadStory()
-                    })                
-
-                    sse.onerror = () => {
-                        console.warn("SSE connection lost. Attempting to reconnect...");
-                    }
-
-                });
-            </script>
-        </head>
-
-        <body>
-            <main class="lobby">
-                ${mainContent}
-            </main>
-        </body>
-
-        </html>
-    `;
-}
 
 export {
-  lobbyListTemplate,
-  lobbyPlayersTemplate,
-  lobbytemplate,
-  lobbyStoryTemplate,
-  lobbyWaitingTemplate,
-  lobbyFullTemplate,
-  lobbyNotExistTemplate,
-  lobbyStorySummary,
+    lobbyListTemplate,
+    lobbyPlayersTemplate,
+    lobbytemplate,
+    lobbyStoryTemplate,
+    lobbyWaitingTemplate,
+    lobbyFullTemplate,
+    lobbyNotExistTemplate,
+    lobbyStorySummary,
+    lobbyStoryFinishTemplate
 };

@@ -5,6 +5,7 @@ import {
   lobbyListTemplate,
   lobbyNotExistTemplate,
   lobbyPlayersTemplate,
+  lobbyStoryFinishTemplate,
   lobbyStorySummary,
   lobbyStoryTemplate,
   lobbytemplate,
@@ -71,12 +72,14 @@ function LobbyRoutes(postOffice, gameLogic) {
 
     res.write(
       lobbyListTemplate(
-        lobbies.map((lobby) => ({
-          lobbyId: lobby.lobbyId,
-          lobbySize: lobby.lobbySize,
-          name: lobby.lobbyName,
-          playerCount: lobby.playingUsersCount,
-        }))
+        lobbies
+          .filter((lobby) => lobby.stories.every((story) => story.votes.length < lobby.lobbySize))
+          .map((lobby) => ({
+            lobbyId: lobby.lobbyId,
+            lobbySize: lobby.lobbySize,
+            name: lobby.lobbyName,
+            playerCount: lobby.playingUsersCount,
+          }))
       )
     );
     res.end();
@@ -110,17 +113,14 @@ function LobbyRoutes(postOffice, gameLogic) {
       (story) => !story.revealedAt && story.startedAt
     );
 
-    if (!story) {
-      story = gameLogic.startStory(lobby.lobbyId);
-    }
 
     let mainContent = "";
 
     if (!story) {
-      mainContent = '<h1>Finish</h1><p>TODO</p><a href="/">Back</a>'
+      mainContent = lobbyStoryFinishTemplate()
     } else if (story.votes.length === lobby.playingUsersCount) {
       mainContent = lobbyStorySummary({
-        projectName: lobby,
+        projectName: lobby.lobbyName,
         title: story.title,
         votes: story.votes,
       });
@@ -205,7 +205,7 @@ function LobbyRoutes(postOffice, gameLogic) {
       return;
     }
 
-    const story = lobby.stories.find((story) => story.startedAt);
+    const story = lobby.stories.find((story) => story.startedAt && !story.revealedAt);
     res.write(
       lobbyStorySummary({
         projectName: lobby.lobbyName,
@@ -229,7 +229,9 @@ function LobbyRoutes(postOffice, gameLogic) {
       return;
     }
 
-    gameLogic.createLobby(userId, userName);
+    const lobby = gameLogic.createLobby(userId, userName);
+
+    gameLogic.startStory(lobby.lobbyId)
 
     res.statusCode = 303;
     res.setHeader("Location", "/lobby");
@@ -275,10 +277,6 @@ function LobbyRoutes(postOffice, gameLogic) {
           return;
         }
 
-        if (lobby.playingUsersCount === lobby.lobbySize) {
-          gameLogic.startStory(lobbyId);
-        }
-
         res.appendHeader("Location", "/lobby");
         res.statusCode = 303;
         res.end();
@@ -298,18 +296,24 @@ function LobbyRoutes(postOffice, gameLogic) {
       (story) => story.startedAt && !story.revealedAt
     );
 
-    res.write(
-      lobbyStoryTemplate({
-        as: story.as,
-        reason: story.reason,
-        want: story.reason,
-        title: story.title,
-        projectName: lobby.lobbyName,
-        id: story.id,
-        maxUsers: lobby.lobbySize,
-        voteCount: story.votes.length,
-      })
-    );
+    if (lobby.stories.every((s) => s.votes.length === lobby.lobbySize)) {
+      res.write(lobbyStoryFinishTemplate())
+    } else {
+
+
+      res.write(
+        lobbyStoryTemplate({
+          as: story.as,
+          reason: story.reason,
+          want: story.want,
+          title: story.title,
+          projectName: lobby.lobbyName,
+          id: story.id,
+          maxUsers: lobby.lobbySize,
+          voteCount: story.votes.length,
+        })
+      );
+    }
 
     res.end();
   }
@@ -344,33 +348,31 @@ function LobbyRoutes(postOffice, gameLogic) {
         res.end();
       });
   }
+  /**
+   * @param {http.IncomingMessage} req
+   * @param {http.ServerResponse} res
+   */
+  function getStoryFinish(req, res) {
+    const { userId } = parseCookies(req.headers.cookie);
 
-  // /**
-  //  * Finish Story
-  //  *
-  //  * @param {http.IncomingMessage} req
-  //  * @param {http.ServerResponse} res
-  //  */
-  // function finishStory(req, res) {
-  //     const { userId } = parseCookies(req.headers.cookie)
+    res.write(lobbyStoryFinishTemplate())
+    res.end()
+  }
 
-  //     let body = []
-  //     req.on("data", (chunk) => {
-  //         body.push(chunk)
-  //     }).on("end", () => {
-  //         const q = new URLSearchParams(Buffer.concat(body).toString())
-  //         const storyId = q.get("storyId")
-  //         const lobby = gameLogic.getLobbyByUserId(userId)
-  //         const story = lobby.stories.find((story) => story.id === storyId)
-  //         if (story.votes.length === lobby.playingUsersCount) {
-  //             gameLogic.finishStory(lobby.lobbyId, storyId, { userId, userName, vote, voteAt: Date.now() })
-  //         }
+  /**
+   * @param {http.IncomingMessage} req
+   * @param {http.ServerResponse} res
+   */
+  function storyFinish(req, res) {
+    const { userId } = parseCookies(req.headers.cookie);
 
-  //         res.appendHeader("Location", "/lobby")
-  //         res.statusCode = 303
-  //         res.end()
-  //     })
-  // }
+    gameLogic.leaveLobby(userId)
+
+    res.statusCode = 303
+    res.setHeader("Location", "/")
+    res.end()
+  }
+
 
   return [
     { handler: getLobbyEvents, method: "GET", path: "/lobby-events" },
@@ -382,7 +384,8 @@ function LobbyRoutes(postOffice, gameLogic) {
     { handler: createVote, method: "POST", path: "/lobby/vote" },
     { handler: getStory, method: "GET", path: "/lobby/story" },
     { handler: getStorySummary, method: "GET", path: "/lobby/story/summary" },
-    // { handler: finishStory, method: "POST", path: "/lobby/story/finish" }
+    { handler: getStoryFinish, method: "GET", path: "/lobby/story/finish" },
+    { handler: storyFinish, method: "POST", path: "/lobby/story/finish" },
   ];
 }
 

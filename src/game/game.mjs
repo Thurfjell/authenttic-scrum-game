@@ -56,7 +56,7 @@ import {
  * @property {(userId: string) => void} leaveLobby
  * @property {(lobbyId: string) => Story | null} startStory
  * @property {(lobbyId: string, storyId:string, vote: Vote) => void} voteStory
- * @property {(lobbyId: string, storyId:string) => void} finishStory
+ * @property {(lobbyId: string) => void} finishLobby
  * @property {(lobbyId: string) => Pick<LobbyUser, "userName" | "userId">[]} getLobbyUsers
  */
 
@@ -115,7 +115,6 @@ function GameLogic(postOffice) {
     },
     startStory(lobbyId) {
       const lobby = lobbies.get(lobbyId);
-      console.log(lobbyId, lobby);
       const story = lobby.stories.find((story) => !story.startedAt);
       if (!story) {
         return null;
@@ -205,8 +204,6 @@ function GameLogic(postOffice) {
         story.votes.push(vote);
       }
 
-      console.log(">> VOTE <<");
-      console.log(story);
       postOffice.Send({
         lobbyId,
         payload: story.votes.length,
@@ -221,11 +218,25 @@ function GameLogic(postOffice) {
           const l = lobbies.get(lobbyId);
           const s = l.stories.find((s) => s.id === storyId);
           s.revealedAt = Date.now();
+
           this.startStory(lobbyId);
-          postOffice.Send({ type: EVENTS.STORY_FINISH, lobbyId });
-        }, 8000);
+
+          postOffice.Send({ type: EVENTS.VOTE_UPDATE, lobbyId });
+        }, 5000);
       }
     },
+    finishLobby(lobbyId) {
+      const lobby = lobbies.get(lobbyId)
+      if (!lobby) {
+        return
+      }
+
+      lobby.stories
+        .flatMap((story) => story.votes.map((vote) => vote.userId))
+        .forEach((userId) => userToLobby.delete(userId))
+
+      lobbies.delete(lobby)
+    }
   };
 }
 
