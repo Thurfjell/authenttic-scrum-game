@@ -109,7 +109,7 @@ function GameLogic(postOffice) {
       lobby.playingUsersCount += 1;
       userToLobby.set(userId, { lobbyId, userId, userName });
       postOffice.Send({ type: "dashboard:update", lobbyId });
-      postOffice.Send({ type: "lobby:update", lobbyId });
+      postOffice.Send({ type: lobby.playingUsersCount === lobby.lobbySize ? EVENTS.STORY_UPDATE : EVENTS.LOBBY_UPDATE, lobbyId });
 
       return lobbies.get(lobbyId);
     },

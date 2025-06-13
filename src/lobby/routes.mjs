@@ -299,8 +299,6 @@ function LobbyRoutes(postOffice, gameLogic) {
     if (lobby.stories.every((s) => s.votes.length === lobby.lobbySize)) {
       res.write(lobbyStoryFinishTemplate())
     } else {
-
-
       res.write(
         lobbyStoryTemplate({
           as: story.as,
