@@ -58,7 +58,7 @@ function lobbyPlayersTemplate(userNames, maxUsers) {
         userName
             ? `<li>${userName}</li>`
             : "<li>Waiting for player...</li>"
-    )}
+    ).join("")}
             </ul>
 
             <p class="lobby-status">
@@ -242,31 +242,19 @@ function lobbytemplate(mainContent) {
 
 
                     const sse = new EventSource("/lobby-events")
+                    const eventHandlers = {
+                        "lobby:update": loadPlayers,
+                        "story:update": loadStory,
+                        "story:vote:finish": loadStorySummary,
+                        "story:finish": loadStoryFinish,
+                        "story:vote:update": loadStory,
+                    };
 
-                    sse.addEventListener("lobby:update", (event) => {
-                        console.log("[SSE] lobby:update", event.data)
-                        loadPlayers()
-                    })
-
-                    sse.addEventListener("story:update", (event) => {
-                        console.log("[SSE] story:update", event.data)
-                        loadStory()
-                    })
-                    
-                    sse.addEventListener("story:vote:finish", (event) => { 
-                        console.log("[SSE] story:vote:finish", event.data)                      
-                        loadStorySummary()
-                    })
-
-                    sse.addEventListener("story:finish", (event) => {
-                        console.log("[SSE] story:finish", event.data)                        
-                        loadStoryFinish()
-                    })
-                    
-                    sse.addEventListener("story:vote:update", (event) => {
-                        console.log("[SSE] story:vote:update", event.data)
-                        loadStory()
-                    })                
+                    for (const [eventName, handler] of Object.entries(eventHandlers)) {
+                        sse.addEventListener(eventName, (event) => {
+                            handler();
+                        });
+                    }              
 
                     sse.onerror = () => {
                         console.warn("SSE connection lost. Attempting to reconnect...");

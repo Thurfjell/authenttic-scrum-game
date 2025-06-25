@@ -8,7 +8,6 @@
  * @returns 
  */
 function dashboardTemplate(dashboard) {
-    //Project WaffleMachine 2.0
     return `
         <!DOCTYPE html>
         <html lang="en">
@@ -18,7 +17,6 @@ function dashboardTemplate(dashboard) {
             <title>Scrum Poker</title>
             <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet" />
             <style>
-        <style>
             body {
                 font-family: "Comic Sans MS", "Chalkboard SE", sans-serif;
                 background-color: #f7f6f3;
@@ -142,7 +140,6 @@ function dashboardTemplate(dashboard) {
                     const sse = new EventSource("/dashboard-events")
 
                     sse.addEventListener("dashboard:update", (event) => {
-                        console.log("[SSE] dashboard:update", event.data)
                         loadList()
                     })
 
